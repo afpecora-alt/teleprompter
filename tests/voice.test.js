@@ -53,6 +53,15 @@ function makeHarness(options = {}) {
 
     resume() {
       calls.push("resume");
+      if (options.deferResume) {
+        return new Promise((resolve, reject) => {
+          this.resolveResume = () => {
+            if (this.state !== "closed") this.state = "running";
+            resolve();
+          };
+          this.rejectResume = () => reject(new Error("injected resume failure"));
+        });
+      }
       if (options.resumeReject) {
         return Promise.reject(new Error("injected resume failure"));
       }
@@ -266,6 +275,82 @@ test("Disable during pending permission stops a late stream and never builds a g
   assert.equal(harness.calls.includes("analyser"), false);
   assert.equal(harness.intervals.size, 0);
   assert.equal(session.enabled, false);
+});
+
+test("Disable after capture resolves but before audio resume stops the owned stream", async () => {
+  const granted = makeStream();
+  const harness = makeHarness({ deferResume: true, streamFactory: () => Promise.resolve(granted.stream) });
+  const statuses = [];
+  const session = new VoiceActivitySession({ window: harness.win, navigator: harness.nav, onStatus: (event) => statuses.push(event.status) });
+  session.enable();
+  await flush();
+  assert.equal(session.pending, true);
+  assert.equal(granted.track.readyState, "live");
+  session.disable();
+  assert.equal(granted.track.readyState, "ended");
+  assert.equal(granted.track.stopCalls, 1);
+  assert.equal(harness.contexts[0].state, "closed");
+  harness.contexts[0].resolveResume();
+  await flush();
+  assert.equal(harness.calls.includes("analyser"), false);
+  assert.equal(harness.intervals.size, 0);
+  assert.equal(session.enabled, false);
+  assert.deepEqual(statuses, ["pending", "off"]);
+});
+
+test("audio-resume rejection stops capture that resolved first", async () => {
+  const granted = makeStream();
+  const harness = makeHarness({ deferResume: true, streamFactory: () => Promise.resolve(granted.stream) });
+  const statuses = [];
+  const session = new VoiceActivitySession({ window: harness.win, navigator: harness.nav, onStatus: (event) => statuses.push(event.status) });
+  session.enable();
+  await flush();
+  harness.contexts[0].rejectResume();
+  await flush();
+  assert.equal(granted.track.readyState, "ended");
+  assert.equal(granted.track.stopCalls, 1);
+  assert.equal(harness.contexts[0].state, "closed");
+  assert.equal(harness.calls.includes("analyser"), false);
+  assert.equal(harness.intervals.size, 0);
+  assert.deepEqual(statuses, ["pending", "unavailable"]);
+});
+
+test("repeated cancel and re-enable isolates stale resume settlement", async () => {
+  const grants = [makeStream(), makeStream(), makeStream()];
+  let request = 0;
+  const harness = makeHarness({
+    deferResume: true,
+    streamFactory: () => Promise.resolve(grants[request++].stream)
+  });
+  const session = new VoiceActivitySession({ window: harness.win, navigator: harness.nav });
+
+  session.enable();
+  await flush();
+  session.disable();
+  session.enable();
+  await flush();
+  harness.contexts[0].resolveResume();
+  await flush();
+  assert.equal(session.pending, true);
+  assert.equal(harness.calls.includes("analyser"), false);
+  assert.equal(grants[0].track.readyState, "ended");
+  assert.equal(grants[1].track.readyState, "live");
+  session.disable();
+  harness.contexts[1].resolveResume();
+  await flush();
+
+  session.enable();
+  await flush();
+  harness.contexts[2].resolveResume();
+  await flush();
+  assert.equal(session.enabled, true);
+  assert.equal(harness.intervals.size, 1);
+  session.disable();
+  assert.equal(harness.intervals.size, 0);
+  assert.ok(grants.every(({ track }) => track.readyState === "ended" && track.stopCalls === 1));
+  assert.ok(harness.contexts.every((context) => context.state === "closed"));
+  assert.ok(harness.nodes.every((node) => node.disconnected));
+  assert.equal(harness.calls.filter((call) => call === "getUserMedia").length, 3);
 });
 
 test("audio-resume failure also stops a stream that arrives later", async () => {

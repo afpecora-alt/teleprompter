@@ -187,6 +187,9 @@
           stopStream(stream);
           return null;
         }
+        // Own capture as soon as it exists. Resume may still be pending, and every
+        // cleanup/failure exit must be able to stop this already-resolved stream.
+        this.stream = stream;
         return stream;
       });
       guardedStream.catch(() => {

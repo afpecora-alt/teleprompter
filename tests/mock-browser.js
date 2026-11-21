@@ -6,8 +6,12 @@ module.exports = function installBrowserMocks(options) {
     tracks: [],
     contexts: [],
     analysers: [],
+    sources: [],
     intervals: new Set(),
     pending: [],
+    pendingResumes: [],
+    tracksPerStream: options && options.tracksPerStream ? options.tracksPerStream : 1,
+    deferResume: Boolean(options && options.deferResume),
     level: 0,
     mode: "normal",
     sampleCount: 0,
@@ -50,9 +54,13 @@ module.exports = function installBrowserMocks(options) {
   }
 
   function makeStream() {
-    const track = new MockTrack();
-    mock.tracks.push(track);
-    return { getTracks: () => [track] };
+    const tracks = [];
+    for (let index = 0; index < mock.tracksPerStream; index += 1) {
+      const track = new MockTrack();
+      mock.tracks.push(track);
+      tracks.push(track);
+    }
+    return { getTracks: () => tracks };
   }
 
   class MockAnalyser {
@@ -82,6 +90,17 @@ module.exports = function installBrowserMocks(options) {
     }
     resume() {
       mock.calls.push("resume");
+      if (mock.deferResume) {
+        return new Promise((resolve, reject) => {
+          mock.pendingResumes.push({
+            resolve: () => {
+              if (this.state !== "closed") this.state = "running";
+              resolve();
+            },
+            reject: () => reject(new Error("injected resume failure"))
+          });
+        });
+      }
       if (mock.mode === "resume-fail") {
         return Promise.reject(new Error("injected resume failure"));
       }
@@ -95,11 +114,13 @@ module.exports = function installBrowserMocks(options) {
       return Promise.resolve();
     }
     createMediaStreamSource() {
-      return {
+      const source = {
         disconnected: false,
         connect() {},
         disconnect() { this.disconnected = true; }
       };
+      mock.sources.push(source);
+      return source;
     }
     createAnalyser() {
       mock.calls.push("analyser");
@@ -171,6 +192,14 @@ module.exports = function installBrowserMocks(options) {
     const pending = mock.pending.splice(0);
     for (const resolve of pending) resolve();
   };
+  mock.resolveNextResume = () => {
+    const pending = mock.pendingResumes.shift();
+    if (pending) pending.resolve();
+  };
+  mock.rejectNextResume = () => {
+    const pending = mock.pendingResumes.shift();
+    if (pending) pending.reject();
+  };
   mock.revokePermission = () => {
     permissionStatus.state = "denied";
     permissionStatus.dispatchEvent(new Event("change"));
@@ -182,7 +211,9 @@ module.exports = function installBrowserMocks(options) {
     trackStates: mock.tracks.map((track) => track.readyState),
     trackStopCalls: mock.tracks.map((track) => track.stopCalls),
     contextStates: mock.contexts.map((context) => context.state),
+    disconnectedSources: mock.sources.map((source) => source.disconnected),
     disconnectedAnalysers: mock.analysers.map((analyser) => analyser.disconnected),
+    pendingResumeCount: mock.pendingResumes.length,
     intervalCount: mock.intervals.size,
     sampleCount: mock.sampleCount,
     wakeRequests: mock.wakeRequests,

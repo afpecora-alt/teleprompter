@@ -53,8 +53,9 @@ Syntax and deterministic unit tests:
 The browser tests use the free Playwright package already available in the build environment; Playwright is not an app dependency. Set `PLAYWRIGHT_MODULE` to its module path, serve the repo, then run:
 
     PLAYWRIGHT_MODULE=/path/to/playwright node tests/browser-smoke.js
+    PLAYWRIGHT_MODULE=/path/to/playwright node tests/capture-race.js
     PLAYWRIGHT_MODULE=/path/to/playwright node tests/resource-run.js
 
-`browser-smoke.js` exercises the actual served UI and scroll loop with deterministic mocked browser audio/permission APIs. `resource-run.js` performs five timed speech/silence cycles and a real 10-minute bounded-resource run. Mocks do not prove real microphone behavior. Evidence is written to `../qa/evidence/voice-activity/` and contains states, positions, timings and resource counts, never audio or analyser sample values.
+`browser-smoke.js` exercises the actual served UI and scroll loop with deterministic mocked browser audio/permission APIs. `capture-race.js` independently controls capture and audio-resume settlement, uses two fake tracks per stream, and covers Disable, Pause, End, hide/pagehide, resume rejection and repeated cancel/re-enable. `resource-run.js` performs five timed speech/silence cycles and a real 10-minute bounded-resource run. Mocks do not prove real microphone behavior. Evidence is written to `../qa/evidence/voice-activity/` and contains states, positions, timings and resource counts, never audio or analyser sample values.
 
 Soup Nazi owns independent verification against `../qa/voice-activity-dod.md`. Android Chrome and iPhone Safari, in both tab and installed-PWA modes, remain UNVERIFIED without named-device evidence. Real quiet-room/noise behavior, physical interruptions, offline microphone capture and phone resource behavior are not claimed by the desktop tests.
