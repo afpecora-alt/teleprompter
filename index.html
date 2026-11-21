@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self'; media-src 'none'">
+  <meta name="theme-color" content="#111111">
+  <meta name="description" content="A private, local-first teleprompter for your phone.">
+  <title>Local Teleprompter</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <section id="editView" class="edit-view" aria-labelledby="appTitle">
+    <header class="edit-header">
+      <div>
+        <h1 id="appTitle">Teleprompter</h1>
+        <p>Your script stays in this browser.</p>
+      </div>
+      <p id="saveStatus" class="save-state" role="status">Not saved yet</p>
+    </header>
+
+    <main class="editor-main">
+      <div class="editor-label-row">
+        <label for="scriptInput">Script</label>
+        <output id="wordCount" for="scriptInput">0 words</output>
+      </div>
+      <textarea id="scriptInput" wrap="soft" spellcheck="true" placeholder="Paste or type your script here"></textarea>
+      <p id="inputMessage" class="notice" role="status"></p>
+
+      <div class="editor-actions">
+        <label for="fileInput">Load a local .txt file</label>
+        <input id="fileInput" type="file" accept=".txt,text/plain">
+        <button id="startButton" type="button" disabled>Start reading</button>
+        <button id="clearButton" class="secondary" type="button">Clear draft</button>
+      </div>
+
+      <section class="library" aria-labelledby="libraryTitle">
+        <h2 id="libraryTitle">Saved scripts</h2>
+        <div class="save-row">
+          <label for="scriptName">Script name</label>
+          <input id="scriptName" type="text" maxlength="120" placeholder="Name this script" autocomplete="off">
+          <button id="saveScriptButton" type="button">Save script</button>
+        </div>
+        <ul id="savedList" class="saved-list"></ul>
+        <p id="emptySaved">No named scripts saved yet.</p>
+      </section>
+
+      <aside class="storage-note">
+        <p>One current draft autosaves on this device. Named scripts are stored only in this browser. Keep your original .txt file; browser storage can be cleared or evicted.</p>
+        <p id="pwaStatus" role="status">Preparing offline support…</p>
+      </aside>
+    </main>
+  </section>
+
+  <section id="readView" class="read-view" aria-label="Teleprompter reader" hidden>
+    <header class="reader-header">
+      <button id="editButton" class="secondary" type="button">← Edit</button>
+      <div class="reader-status">
+        <strong id="playbackStatus">Paused</strong>
+        <span id="readWordCount">0 words</span>
+      </div>
+    </header>
+
+    <main id="readerScroll" class="reader-scroll" tabindex="0" aria-label="Scrolling script">
+      <article id="scriptSurface" class="script-surface">
+        <div id="scriptText"></div>
+      </article>
+    </main>
+
+    <footer class="thumb-bar" aria-label="Reading controls">
+      <button id="playButton" type="button">Play</button>
+
+      <div class="stepper">
+        <span>Speed</span>
+        <button id="speedDown" class="secondary" type="button" aria-label="Decrease speed">−</button>
+        <output id="speedValue">45 px/s</output>
+        <button id="speedUp" class="secondary" type="button" aria-label="Increase speed">+</button>
+      </div>
+
+      <div class="stepper">
+        <span>Font</span>
+        <button id="fontDown" class="secondary" type="button" aria-label="Decrease font size">−</button>
+        <output id="fontValue">40 px</output>
+        <button id="fontUp" class="secondary" type="button" aria-label="Increase font size">+</button>
+      </div>
+
+      <div class="utility-controls">
+        <button id="mirrorButton" class="secondary" type="button" aria-pressed="false">Mirror: Off</button>
+        <button id="fullscreenButton" class="secondary" type="button">Fullscreen</button>
+      </div>
+
+      <p id="readSaveStatus" class="save-state" role="status">Not saved yet</p>
+      <p id="wakeStatus" role="status">Screen wake lock starts with playback.</p>
+      <p id="readNotice" class="notice" role="status"></p>
+    </footer>
+  </section>
+
+  <noscript>This teleprompter needs JavaScript enabled. Your script is never sent to a server.</noscript>
+</body>
+</html>
