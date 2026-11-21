@@ -33,13 +33,15 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
 button,
 input,
-textarea {
+textarea,
+select {
   min-width: 0;
 }
 
@@ -70,6 +72,7 @@ button:disabled {
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
+select:focus-visible,
 .reader-scroll:focus-visible {
   outline: 3px solid #ffdf5d;
   outline-offset: 3px;
@@ -352,6 +355,85 @@ textarea {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
+
+.voice-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.voice-controls h2,
+.voice-controls > p,
+.voice-controls > button,
+.voice-pre-prompt,
+.voice-level {
+  grid-column: 1 / -1;
+}
+
+.voice-controls h2 {
+  font-size: 1rem;
+}
+
+.voice-controls > p {
+  margin: 0;
+}
+
+.voice-status {
+  font-weight: 700;
+}
+
+.voice-detail:empty {
+  display: none;
+}
+
+.voice-pre-prompt {
+  padding: 8px;
+  border-left: 3px solid var(--text);
+  background: var(--surface);
+}
+
+.voice-pre-prompt p {
+  margin: 0 0 8px;
+}
+
+.voice-prompt-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.voice-controls label {
+  align-self: center;
+  font-weight: 700;
+}
+
+.voice-controls select {
+  min-height: 48px;
+  padding: 8px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.voice-level {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.voice-level span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #ffdf5d;
+  transform: scaleX(0);
+  transform-origin: left center;
 }
 
 .thumb-bar p {

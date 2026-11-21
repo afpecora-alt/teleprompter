@@ -1,10 +1,11 @@
 "use strict";
 
-const CACHE_NAME = "teleprompter-shell-v1.0.3";
+const CACHE_NAME = "teleprompter-shell-v1.1.0-voice-experiment";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
+  "./voice.js",
   "./app.js",
   "./manifest.webmanifest",
   "./icon-192.png",

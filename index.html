@@ -11,6 +11,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css">
+  <script src="voice.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -92,6 +93,31 @@
         <button id="mirrorButton" class="secondary" type="button" aria-pressed="false">Mirror: Off</button>
         <button id="fullscreenButton" class="secondary" type="button">Fullscreen</button>
       </div>
+
+      <section id="voiceControls" class="voice-controls" aria-labelledby="voiceTitle" hidden>
+        <h2 id="voiceTitle">Voice pause/resume — experimental</h2>
+        <p>Sound only gates your selected speed. This does not follow the script or your reading pace.</p>
+        <p id="voiceStatus" class="voice-status" role="status">Microphone off</p>
+        <p id="voiceDetail" class="voice-detail" role="status"></p>
+        <button id="voiceSetupButton" class="secondary" type="button">Set up voice</button>
+        <div id="voicePrePrompt" class="voice-pre-prompt" hidden>
+          <p>Before your browser asks for microphone permission: audio is analysed transiently on this device only. Nothing is recorded, saved, transcribed or sent anywhere.</p>
+          <div class="voice-prompt-actions">
+            <button id="voiceEnableButton" type="button">Enable microphone</button>
+            <button id="voiceCancelButton" class="secondary" type="button">Not now</button>
+          </div>
+        </div>
+        <button id="voiceDisableButton" class="secondary" type="button" hidden>Disable voice</button>
+        <label for="voiceSensitivity">Sensitivity</label>
+        <select id="voiceSensitivity">
+          <option value="low">Low</option>
+          <option value="normal" selected>Normal</option>
+          <option value="high">High</option>
+        </select>
+        <div id="voiceLevel" class="voice-level" aria-label="Transient microphone input level" hidden>
+          <span id="voiceLevelFill"></span>
+        </div>
+      </section>
 
       <p id="readSaveStatus" class="save-state" role="status">Not saved yet</p>
       <p id="wakeStatus" role="status">Screen wake lock starts with playback.</p>

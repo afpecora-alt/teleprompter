@@ -43,7 +43,18 @@
     mirrorButton: byId("mirrorButton"),
     fullscreenButton: byId("fullscreenButton"),
     wakeStatus: byId("wakeStatus"),
-    readNotice: byId("readNotice")
+    readNotice: byId("readNotice"),
+    voiceControls: byId("voiceControls"),
+    voiceStatus: byId("voiceStatus"),
+    voiceDetail: byId("voiceDetail"),
+    voiceSetupButton: byId("voiceSetupButton"),
+    voicePrePrompt: byId("voicePrePrompt"),
+    voiceEnableButton: byId("voiceEnableButton"),
+    voiceCancelButton: byId("voiceCancelButton"),
+    voiceDisableButton: byId("voiceDisableButton"),
+    voiceSensitivity: byId("voiceSensitivity"),
+    voiceLevel: byId("voiceLevel"),
+    voiceLevelFill: byId("voiceLevelFill")
   };
 
   let state = freshState();
@@ -56,6 +67,8 @@
   let playbackPosition = 0;
   let wakeSentinel = null;
   let wakeRequestId = 0;
+  let voiceSession = null;
+  const voiceExperimentEnabled = new URLSearchParams(window.location.search).get("voiceExperiment") === "1";
 
   function freshState() {
     return {
@@ -387,6 +400,89 @@
     updateControlDisplay();
   }
 
+  function voiceCaptureActive() {
+    return Boolean(voiceSession && (voiceSession.pending || voiceSession.enabled));
+  }
+
+  function voiceScrollBlocked() {
+    return Boolean(voiceSession && voiceSession.enabled && !voiceSession.shouldScroll);
+  }
+
+  function updatePlaybackStatus() {
+    if (!playing) {
+      return;
+    }
+    els.playbackStatus.textContent = voiceScrollBlocked() ? "Voice paused" : "Playing";
+  }
+
+  function updateVoiceStatus({ status, detail }) {
+    const labels = {
+      off: "Microphone off",
+      pending: "Microphone permission requested…",
+      listening: "Listening",
+      silence: "Scroll paused for silence",
+      unavailable: "Voice unavailable — manual mode"
+    };
+    els.voiceStatus.textContent = labels[status] || labels.unavailable;
+    els.voiceDetail.textContent = detail || "";
+    const captureVisible = status === "pending" || status === "listening" || status === "silence";
+    els.voiceSetupButton.hidden = captureVisible;
+    els.voiceSetupButton.textContent = status === "unavailable" ? "Retry voice setup" : "Set up voice";
+    els.voiceDisableButton.hidden = !captureVisible;
+    els.voiceDisableButton.textContent = status === "pending" ? "Cancel voice setup" : "Disable voice";
+    els.voiceLevel.hidden = status !== "listening" && status !== "silence";
+    if (status !== "pending") {
+      els.voicePrePrompt.hidden = true;
+    }
+    updatePlaybackStatus();
+    if ((status === "listening" || status === "silence") && !playing && els.readView.hidden === false) {
+      startPlayback();
+    }
+  }
+
+  function stopVoiceCapture() {
+    if (voiceCaptureActive()) {
+      voiceSession.disable();
+    }
+  }
+
+  function initializeVoiceExperiment() {
+    if (!voiceExperimentEnabled) {
+      return;
+    }
+    els.voiceControls.hidden = false;
+    if (!window.TeleprompterVoice) {
+      updateVoiceStatus({ status: "unavailable", detail: "The local voice module did not load. Manual controls remain ready." });
+      els.voiceSetupButton.disabled = true;
+      return;
+    }
+    voiceSession = new window.TeleprompterVoice.VoiceActivitySession({
+      window,
+      navigator,
+      onStatus: updateVoiceStatus,
+      onLevel: (ratio) => {
+        els.voiceLevelFill.style.transform = `scaleX(${clamp(finiteNumber(ratio, 0), 0, 1)})`;
+      }
+    });
+    els.voiceSetupButton.addEventListener("click", () => {
+      els.voicePrePrompt.hidden = false;
+      els.voiceSetupButton.hidden = true;
+      els.voiceEnableButton.focus();
+    });
+    els.voiceCancelButton.addEventListener("click", () => {
+      els.voicePrePrompt.hidden = true;
+      els.voiceSetupButton.hidden = false;
+      els.voiceSetupButton.focus();
+    });
+    els.voiceEnableButton.addEventListener("click", () => {
+      els.voicePrePrompt.hidden = true;
+      voiceSession.enable();
+    });
+    els.voiceDisableButton.addEventListener("click", () => voiceSession.disable());
+    els.voiceSensitivity.addEventListener("change", () => voiceSession.setSensitivity(els.voiceSensitivity.value));
+    updateVoiceStatus({ status: "off", detail: "Voice activation is off until you explicitly enable it." });
+  }
+
   function enterReader() {
     const text = els.scriptInput.value;
     if (!text.trim()) {
@@ -410,7 +506,7 @@
   }
 
   function enterEditor() {
-    if (playing || rafId !== null || wakeSentinel) {
+    if (playing || rafId !== null || wakeSentinel || voiceCaptureActive()) {
       pausePlayback();
     }
     els.readView.hidden = true;
@@ -427,6 +523,7 @@
     if (maximum <= 0) {
       els.playbackStatus.textContent = "Script fits on screen";
       els.playButton.textContent = "Play";
+      stopVoiceCapture();
       releaseWakeLock();
       return;
     }
@@ -438,7 +535,7 @@
     playing = true;
     lastTimestamp = null;
     lastProgressSave = 0;
-    els.playbackStatus.textContent = "Playing";
+    updatePlaybackStatus();
     els.playButton.textContent = "Pause";
     acquireWakeLock();
     rafId = requestAnimationFrame(playbackTick);
@@ -456,6 +553,7 @@
     }
     els.playbackStatus.textContent = "Paused";
     els.playButton.textContent = "Play";
+    stopVoiceCapture();
     releaseWakeLock();
     persist();
   }
@@ -471,6 +569,7 @@
     state.progress = 1;
     els.playbackStatus.textContent = "End of script";
     els.playButton.textContent = "Restart";
+    stopVoiceCapture();
     releaseWakeLock();
     persist();
   }
@@ -489,7 +588,7 @@
 
     const elapsed = lastTimestamp === null ? 0 : Math.max(0, (timestamp - lastTimestamp) / 1000);
     lastTimestamp = timestamp;
-    if (elapsed > 0) {
+    if (elapsed > 0 && !voiceScrollBlocked()) {
       playbackPosition = Math.min(maximum, playbackPosition + state.speed * elapsed);
       els.readerScroll.scrollTop = playbackPosition;
     }
@@ -631,6 +730,10 @@
 
   function handleVisibilityChange() {
     if (document.hidden) {
+      if (voiceCaptureActive()) {
+        pausePlayback();
+        return;
+      }
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
         rafId = null;
@@ -688,7 +791,8 @@
   els.mirrorButton.addEventListener("click", toggleMirror);
   els.fullscreenButton.addEventListener("click", toggleFullscreen);
   els.readerScroll.addEventListener("scroll", () => {
-    if (!playing) {
+    if (!playing || voiceScrollBlocked()) {
+      playbackPosition = els.readerScroll.scrollTop;
       state.progress = normalizedProgress();
       if (state.progress < 0.999 && els.playbackStatus.textContent === "End of script") {
         els.playbackStatus.textContent = "Paused";
@@ -701,7 +805,11 @@
   document.addEventListener("visibilitychange", handleVisibilityChange);
   document.addEventListener("fullscreenchange", updateFullscreenControl);
   window.addEventListener("pagehide", () => {
-    persist();
+    if (voiceCaptureActive()) {
+      pausePlayback();
+    } else {
+      persist();
+    }
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
       rafId = null;
@@ -723,5 +831,6 @@
   updateEditorDisplay();
   applyVisualSettings();
   renderSavedList();
+  initializeVoiceExperiment();
   registerServiceWorker();
 })();
