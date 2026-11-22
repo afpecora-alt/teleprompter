@@ -59,3 +59,11 @@ The browser tests use the free Playwright package already available in the build
 `browser-smoke.js` exercises the actual served UI and scroll loop with deterministic mocked browser audio/permission APIs. `capture-race.js` independently controls capture and audio-resume settlement, uses two fake tracks per stream, and covers Disable, Pause, End, hide/pagehide, resume rejection and repeated cancel/re-enable. `resource-run.js` performs five timed speech/silence cycles and a real 10-minute bounded-resource run. Mocks do not prove real microphone behavior. Evidence is written to `../qa/evidence/voice-activity/` and contains states, positions, timings and resource counts, never audio or analyser sample values.
 
 Soup Nazi owns independent verification against `../qa/voice-activity-dod.md`. Android Chrome and iPhone Safari, in both tab and installed-PWA modes, remain UNVERIFIED without named-device evidence. Real quiet-room/noise behavior, physical interruptions, offline microphone capture and phone resource behavior are not claimed by the desktop tests.
+
+## Known issues (experimental branch)
+
+- **Round-2 independent QA verdict: FAIL (2026-11-21).** Antonio explicitly decided to publish this branch with the failure documented; publication is not QA approval.
+- **A05:** after a script reaches **End**, enabling voice control can reset its position to 0 without the user choosing **Restart**. Do not use this branch when preserving an ended script's position matters.
+- The round-1 capture-ownership race was addressed in `d298dc4`. Seven bounded fake-track race checks passed in round 2, but the full both-order cleanup/failure/re-enable matrix is incomplete, including **End while permission is pending**. Other machine-testable criteria also remain UNVERIFIED.
+- Android Chrome and iPhone Safari, in both tab and installed-PWA modes, are UNVERIFIED. No real-microphone or physical-device testing was performed.
+- This branch is an **experiment, not a release**. `main` is the supported build. Publishing this branch creates no deployment or Pages site.
